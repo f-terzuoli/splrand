@@ -1,82 +1,63 @@
+"""Unit test for the pdf"""
+
+
+
+import unittest
+
 import numpy as np
-from scipy.interpolate import InterpolatedUnivariateSpline
-from matplotlib import pyplot as plt
+
+import matplotlib.pyplot as plt
+import matplotlib
 from scipy.optimize import curve_fit
+import scipy
+
+from splrand.pdf import ProbabilityDensityFunction
 
 
-class ProbabilityDensityFunction(InterpolatedUnivariateSpline):
+class TestPdf(unittest.TestCase):
 
-    """Class describing a probability density function.
-    """
+    def test_gauss(self, mu=0., sigma=1., support=10., num_points=500):
+        '''Unit test with a gaussian distribution
+        '''
+        from scipy.stats import norm
+        x = np.linspace(-support * sigma + mu, support * sigma + mu, num_points)
+        y = norm.pdf(x, mu, sigma)
+        pdf = ProbabilityDensityFunction(x, y)
+        plt.plot(x, y)
 
-    def __init__(self, x, y):
-        """Constructor.
-        """
-        InterpolatedUnivariateSpline.__init__(self, x, y)
-        ycdf = np.array([self.integral(x[0], xcdf) for xcdf in x])
-        self.cdf = InterpolatedUnivariateSpline(x, ycdf)
-        """Need to make sure that the vector I am passingto the ppf spline as
-        the x values has no duplicates---and need to filter the y accordingly."""
-        xppf, ippf = np.unique(ycdf, return_index=True)
-        yppf = x[ippf]
+        plt.figure('cdf')
+        plt.plot(x, pdf.cdf(x))
+        plt.xlabel('x')
+        plt.ylabel('cdf(x)')
 
-        self.ppf = InterpolatedUnivariateSpline(xppf, yppf)
+        plt.figure('ppf')
+        q = np.linspace(0., 1., 1000)
+        plt.plot(q, pdf.ppf(q))
+        plt.xlabel('q')
+        plt.ylabel('ppf(q)')
 
-    def prob(self, x1, x2):
-        """Return the probability for the random variable to be included
-        between x1 and x2.
-        """
-        return self.cdf(x2) - self.cdf(x1)
+        plt.figure('Sampling')
+        rnd = pdf.rnd(10000000)
+        ydata, edges, _ = plt.hist(rnd, bins=200)
+        xdata = 0.5 * (edges[1:] + edges [:-1])
+        print(ydata.shape, edges.shape, xdata.shape)
 
-    def rnd(self, size=1000):
-        """Return an array of random values from the pdf.
-        """
-        return self.ppf(np.random.uniform(size=size))
+        def f(x, C, mu, sigma):
+            return C * norm.pdf(x, mu, sigma)
 
+        popt, pcov = curve_fit(f, xdata, ydata)
+        print(popt)
+        print(np.sqrt(pcov.diagonal()))
+        _x = np.linspace(-10, 10, 500)
+        _y = f(_x, *popt)
+        plt.plot(_x, _y)
 
+        mask = ydata > 0
+        chi2 = sum(((ydata[mask] - f(xdata[mask], *popt)) / np.sqrt(ydata[mask]))**2.)
 
-def test_gauss(mu=0., sigma=1., support=10., num_points=500):
-    '''Unit test with a gaussian distribution
-    '''
-    from scipy.stats import norm
-    x = np.linspace(-support * sigma + mu, support * sigma + mu, num_points)
-    y = norm.pdf(x, mu, sigma)
-    pdf = ProbabilityDensityFunction(x, y)
-    plt.plot(x, y)
-
-    plt.figure('cdf')
-    plt.plot(x, pdf.cdf(x))
-    plt.xlabel('x')
-    plt.ylabel('cdf(x)')
-
-    plt.figure('ppf')
-    q = np.linspace(0., 1., 1000)
-    plt.plot(q, pdf.ppf(q))
-    plt.xlabel('q')
-    plt.ylabel('ppf(q)')
-
-    plt.figure('Sampling')
-    rnd = pdf.rnd(10000000)
-    ydata, edges, _ = plt.hist(rnd, bins=200)
-    xdata = 0.5 * (edges[1:] + edges [:-1])
-    print(ydata.shape, edges.shape, xdata.shape)
-
-    def f(x, C, mu, sigma):
-        return C * norm.pdf(x, mu, sigma)
-
-    popt, pcov = curve_fit(f, xdata, ydata)
-    print(popt)
-    print(np.sqrt(pcov.diagonal()))
-    _x = np.linspace(-10, 10, 500)
-    _y = f(_x, *popt)
-    plt.plot(_x, _y)
-
-    mask = ydata > 0
-    chi2 = sum(((ydata[mask] - f(xdata[mask], *popt)) / np.sqrt(ydata[mask]))**2.)
-
-    nu = mask.sum() - 3
-    sigma = np.sqrt(2 * nu)
-    print(chi2, nu, sigma)
+        nu = mask.sum() - 3
+        sigma = np.sqrt(2 * nu)
+        print(chi2, nu, sigma)
 
 
 
@@ -111,5 +92,4 @@ if __name__ == '__main__':
 
     plt.show()'''
 
-    test_gauss()
-    plt.show()
+    unittest.main()

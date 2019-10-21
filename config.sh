@@ -1,2 +1,2 @@
-export PYTHONPATH="/mnt/c/Users/Mithrandir/Documents/Università/Magistrale/Computing\ Methods\ for\ Experimental\ Physics/splrand":$PYTHONPATH
+export PYTHONPATH="/home/francis/cmep/splrand":$PYTHONPATH
 echo "PYTHONPATH set to " $PYTHONPATH
